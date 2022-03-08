@@ -1,0 +1,102 @@
+# Publishes JS packages to NPM repository using the beachball CLI.
+parameters:
+  # Project information
+  - name: ProjectRoot
+    type: string
+    default: $(Build.SourcesDirectory)
+    displayName: 'Path to the project root folder.'
+
+  # Publish options
+  - name: Registry
+    type: string
+    default: 'https://registry.npmjs.org'
+    displayName: 'NPM registry URL to publish to.'
+  - name: ExternalFeedCredentials
+    type: string
+    default: ''
+    displayName: 'Names of external NPM feed credentials.'
+  - name: Prerelease
+    type: string
+    default: ''
+    displayName: 'Pre-release version to publish.'
+  - name: DistTag
+    type: string
+    default: 'latest'
+    displayName: 'NPM dist-tag to apply to the package.'
+
+steps:
+  - script: |
+      git config user.name '$(Build.RequestedFor)'
+      git config user.email '$(Build.RequestedForEmail)'
+    displayName: 'Set GIT identity'
+    workingDirectory: ${{ parameters.ProjectRoot }}
+
+  # Backup and replace .npmrc file
+  - bash: |
+      if [ -f ${{ parameters.ProjectRoot }}/.npmrc ]; then
+        mv ${{ parameters.ProjectRoot }}/.npmrc ${{ parameters.ProjectRoot }}/.npmrc-backup
+      fi
+      echo > .npmrc
+      echo "registry=${{ parameters.Registry }}" >> ${{ parameters.ProjectRoot }}/.npmrc
+      echo "always-auth=true" >> ${{ parameters.ProjectRoot }}/.npmrc
+    displayName: 'Prepare .npmrc file'
+    workingDirectory: ${{ parameters.ProjectRoot }}
+
+  - task: npmAuthenticate@0
+    displayName: 'Authenticate to NPM'
+    inputs:
+      workingFile: ${{ parameters.ProjectRoot }}/.npmrc
+      customEndpoint: ${{ parameters.ExternalFeedCredentials }}
+
+  - pwsh: |
+      Get-Content ${{ parameters.ProjectRoot }}/.npmrc | Write-Host
+    workingDirectory: ${{ parameters.ProjectRoot }}
+
+  - pwsh: |
+      $isMatch = (Get-Content ${{ parameters.ProjectRoot }}/.npmrc | Out-String) -match "_(?<AuthType>authToken|password)=(?<Token>.*)$"
+      if (-not $isMatch) {
+        Write-Host "No NPM auth token found in ${{ parameters.ProjectRoot }}/.npmrc"
+        exit 1
+      }
+
+      $token = $Matches.Token
+      $authType = $Matches.AuthType.ToLower()
+      echo "##vso[task.setvariable variable=NPM_AUTH_TOKEN;]$token"
+      echo "##vso[task.setvariable variable=NPM_AUTH_TYPE;]$authType"
+    displayName: 'Retrieve NPM access token'
+
+  - ${{ if eq(parameters.Prerelease, '') }}:
+      - script: |
+          yarn beachball publish \
+            -b origin/main \
+            -y \
+            -r ${{ parameters.Registry }} \
+            -n $(NPM_AUTH_TOKEN) \
+            -a $(NPM_AUTH_TYPE) \
+            -t ${{ parameters.DistTag }} \
+            -m 'applying frontend package updates [skip ci]'
+        displayName: 'Publish NPM packages'
+        workingDirectory: ${{ parameters.ProjectRoot }}
+
+  - ${{ if ne(parameters.Prerelease, '') }}:
+      - script: |
+          yarn beachball canary \
+            -b origin/main \
+            -y \
+            -r ${{ parameters.Registry }} \
+            -n $(NPM_AUTH_TOKEN) \
+            -a $(NPM_AUTH_TYPE) \
+            -t ${{ parameters.DistTag }} \
+            --canaryName ${{ parameters.Prerelease }} \
+            --no-push \
+            --no-git-tags
+        displayName: 'Publish NPM packages (Prerelease)'
+        workingDirectory: ${{ parameters.ProjectRoot }}
+
+  # Restore .npmrc file
+  - bash: |
+      if [ -f ${{ parameters.ProjectRoot }}/.npmrc-backup ]; then
+        mv ${{ parameters.ProjectRoot }}/.npmrc-backup ${{ parameters.ProjectRoot }}/.npmrc
+      fi
+    displayName: 'Restore .npmrc file'
+    workingDirectory: ${{ parameters.ProjectRoot }}

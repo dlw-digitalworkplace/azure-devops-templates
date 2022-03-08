@@ -1,0 +1,61 @@
+# Builds, tests, packages and publishes a JS based solution.
+parameters:
+  # Project information
+  - name: ProjectRoot
+    type: string
+    default: $(Build.SourcesDirectory)
+    displayName: 'Path to the project root folder.'
+
+  # NodeJS options
+  - name: NodeVersion
+    type: string
+    default: ''
+    displayName: 'Specifc Node version to use.'
+
+  # Package manager options
+  - name: ExternalFeedCredentials
+    type: string
+    default: ''
+    displayName: 'Names of external NPM feed links.'
+
+  - name: WithPackageCache
+    type: boolean
+    default: true
+    displayName: 'Whether to use package caching.'
+
+steps:
+  # Setup prerequisites
+  - ${{ if ne(parameters.NodeVersion, '') }}:
+      - task: NodeTool@0
+        displayName: 'Use specific NodeJS tool version ${{ parameters.NodeVersion }}'
+        inputs:
+          versionSpec: ${{ parameters.NodeVersion }}
+
+  - ${{ if ne(parameters.ExternalFeedCredentials, '') }}:
+      - task: npmAuthenticate@0
+        displayName: 'NPM Authenticate'
+        inputs:
+          workingFile: ${{ parameters.ProjectRoot }}/.npmrc
+          customEndpoint: ${{ parameters.ExternalFeedCredentials }}
+
+  # Install dependencies
+  - ${{ if eq(parameters.WithPackageCache, 'true') }}:
+      - task: Cache@2
+        displayName: Package Caching
+        inputs:
+          key: yarn | "$(Agent.OS)" | $(LOCKFILE_PATH)
+          restoreKeys: |
+            yarn | "$(Agent.OS)"
+          path: $(YARN_CACHE_FOLDER)
+        condition: ne(variables.YARN_CACHE_FOLDER, '')
+
+  - script: |
+      yarn --frozen-lockfile
+    displayName: 'YARN install'
+    workingDirectory: ${{ parameters.ProjectRoot }}
+
+  # Build project
+  - script: |
+      yarn build
+    displayName: 'YARN build'
+    workingDirectory: ${{ parameters.ProjectRoot }}

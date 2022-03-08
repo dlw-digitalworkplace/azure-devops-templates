@@ -1,0 +1,21 @@
+# Configures ci flags.
+parameters:
+  # Project information
+  - name: ProjectRoot
+    type: string
+    default: $(Build.SourcesDirectory)
+    displayName: 'Path to the project root folder.'
+
+  # Package manager options
+  - name: PackageLockFilePath
+    type: string
+    default: ''
+    displayName: "Path to the package manager's lockfile."
+
+variables:
+  LOCKFILE_PATH: ${{ parameters.ProjectRoot }}/yarn.lock
+  YARN_CACHE_FOLDER: $(Pipeline.Workspace)/.yarn
+
+  ${{ if ne(parameters.PackageLockFilePath, '') }}:
+    # overwrite lockfile path if set
+    LOCKFILE_PATH: ${{ parameters.PackageLockFilePath }}

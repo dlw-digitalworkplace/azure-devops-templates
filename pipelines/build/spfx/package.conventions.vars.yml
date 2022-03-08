@@ -1,0 +1,30 @@
+parameters:
+  # Project information
+  - name: ProjectRoot
+    type: string
+    default: $(Build.SourcesDirectory)
+    displayName: 'Path to the project root folder.'
+  - name: SPFxProjectRoot
+    type: string
+    default: ''
+    displayName: 'Path to the SPFx project root folder. Should only be set if different from ProjectRoot.'
+
+  # Package manager options
+  - name: PackageLockFilePath
+    type: string
+    default: ''
+    displayName: "Path to the package manager's lockfile."
+
+variables:
+  - template: ../js/build.conventions.vars.yml
+    parameters:
+      ProjectRoot: ${{ parameters.ProjectRoot }}
+      PackageLockFilePath: ${{ parameters.PackageLockFilePath }}
+
+  - name: SPFxProjectRoot
+    value: ${{ parameters.SPFxProjectRoot }}
+
+  # if no specific SPFx project root is given, use the project root
+  - ${{ if eq(parameters.SPFxProjectRoot, '') }}:
+      - name: SPFxProjectRoot
+        value: ${{ parameters.ProjectRoot }}

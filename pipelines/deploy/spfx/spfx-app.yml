@@ -1,0 +1,95 @@
+# Deploys a SharePoint app package to an app catalog.
+parameters:
+  # Package info
+  - name: package
+    type: string
+    displayName: 'Path to .sppkg package to deploy.'
+
+  # Catalog target info
+  - name: appCatalogUrl
+    type: string
+    displayName: 'SharePoint app catalog URL.'
+  - name: appCatalogScope
+    type: string
+    values:
+      - 'tenant'
+      - 'sitecollection'
+    default: tenant
+    displayName: 'Scope of the SharePoint app catalog.'
+
+  # Authentication info
+  - name: certificateFile
+    type: string
+    default: ''
+    displayName: 'Secure file to use as the authentication certificate.'
+  - name: certificateFilePath
+    type: string
+    default: ''
+    displayName: 'File path to the authentication certificate.'
+  - name: aadClientId
+    type: string
+    displayName: "Azure AD deployment application's client ID."
+  - name: aadTenantId
+    type: string
+    displayName: 'Azure AD tenant ID.'
+
+  # Additional command steps
+  - name: extraDeployArgs
+    type: string
+    default: ''
+    displayName: 'Additional arguments to pass to the deploy command.'
+
+steps:
+  - ${{ if ne(parameters.certificateFile, '') }}:
+      - task: DownloadSecureFile@1
+        name: deploymentCertificate
+        displayName: 'Download deployment certificate'
+        inputs:
+          secureFile: ${{ parameters.certificateFile }}
+
+  - script: |
+      yarn global add @pnp/cli-microsoft365
+    displayName: 'Install M365 CLI'
+
+  - ${{ if ne(parameters.certificateFile, '') }}:
+      - script: |
+          m365 login --authType certificate --certificateFile $(deploymentCertificate.secureFilePath)
+        displayName: 'Connect to SharePoint Online'
+        env:
+          CLIMICROSOFT365_AADAPPID: ${{ parameters.aadClientId }}
+          CLIMICROSOFT365_TENANT: ${{ parameters.aadTenantId }}
+  - ${{ elseif ne(parameters.certificateFilePath, '') }}:
+      - script: |
+          m365 login --authType certificate --certificateFile ${{ parameters.certificateFilePath }}
+        displayName: 'Connect to SharePoint Online'
+        env:
+          CLIMICROSOFT365_AADAPPID: ${{ parameters.aadClientId }}
+          CLIMICROSOFT365_TENANT: ${{ parameters.aadTenantId }}
+  - ${{ else }}:
+      - script: |
+          echo "No authentication certificate specified."
+          exit 1
+        displayName: 'Connect to SharePoint Online'
+
+  - script: |
+      m365 spo app add \
+        --appCatalogUrl ${{ parameters.appCatalogUrl }} \
+        --filePath ${{ parameters.package }} \
+        --scope ${{ parameters.appCatalogScope }} \
+        --overwrite \
+        --verbose
+    displayName: 'Upload SPFx package'
+
+  - pwsh: |
+      $packageFileName = (Split-Path -Path ${{ parameters.package }} -Leaf)
+      Write-Host '##vso[task.setVariable variable=PackageFileName]$packageFileName'
+    displayName: 'Get package file name'
+
+  - script: |
+      m365 spo app deploy \
+        --appCatalogUrl ${{ parameters.appCatalogUrl }} \
+        --name $(PackageFileName) \
+        --scope ${{ parameters.appCatalogScope }} \
+        --verbose \
+        ${{ parameters.extraDeployArgs }}
+    displayName: 'Deploy SPFx package'

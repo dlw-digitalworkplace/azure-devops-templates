@@ -1,0 +1,60 @@
+# Builds, tests, packages and publishes a JS based solution.
+parameters:
+  # Project information
+  - name: ProjectRoot
+    type: string
+    default: $(Build.SourcesDirectory)
+    displayName: 'Path to the project root folder.'
+  - name: SPFxProjectRoot
+    type: string
+    default: ''
+    displayName: 'Path to the SPFx project root folder.'
+
+  # NodeJS options
+  - name: NodeVersion
+    type: string
+    default: ''
+    displayName: 'Specifc Node version to use.'
+
+  # Package manager options
+  - name: PackageLockFilePath
+    type: string
+    default: ''
+    displayName: "Path to the package manager's lockfile."
+
+  - name: ExternalFeedCredentials
+    type: string
+    default: ''
+    displayName: 'Names of external NPM feed links.'
+
+  - name: WithPackageCache
+    type: boolean
+    default: true
+    displayName: 'Whether to use package caching.'
+
+  # Packaging options
+  - name: WithConfigTransform
+    type: boolean
+    default: true
+    displayName: 'Whether to transform the package-solution.js file.'
+
+steps:
+  - ${{ if eq(parameters.WithConfigTransform, 'true') }}:
+      - task: FileTransform@1
+        displayName: 'Update SPFx configuration files'
+        inputs:
+          folderPath: '${{ parameters.SPFxProjectRoot }}/config'
+          fileType: json
+          targetFiles: 'package-solution.json'
+
+  - template: ../js/build.yml
+    parameters:
+      ProjectRoot: ${{ parameters.ProjectRoot }}
+      NodeVersion: ${{ parameters.NodeVersion }}
+      ExternalFeedCredentials: ${{ parameters.ExternalFeedCredentials }}
+      WithPackageCache: ${{ parameters.WithPackageCache }}
+
+  - script: |
+      yarn ship --verbose
+    displayName: 'Package solution'
+    workingDirectory: ${{ parameters.SPFxProjectRoot }}

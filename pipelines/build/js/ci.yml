@@ -1,0 +1,110 @@
+# Builds, tests, packages and publishes a JS based solution.
+parameters:
+  # Project information
+  - name: ProjectRoot
+    type: string
+    default: $(Build.SourcesDirectory)
+    displayName: 'Path to the project root folder.'
+  - name: WithBeachball
+    type: boolean
+    default: false
+    displayName: 'Use Beachball to manage package versions.'
+
+  # Release options
+  - name: WithRelease
+    type: boolean
+    default: false
+    displayName: 'Whether to push NPM packages to feed.'
+
+  # Testing options
+  - name: BeforeTestsSteps
+    type: stepList
+    default: []
+    displayName: 'Optional steps to execute before test execution.'
+  - name: AfterTestsSteps
+    type: stepList
+    default: []
+    displayName: 'Optional steps to execute after test execution.'
+  - name: NoTests
+    type: boolean
+    default: false
+    displayName: 'Whether not to run tests.'
+
+  # NodeJS options
+  - name: NodeVersion
+    type: string
+    default: ''
+    displayName: 'Specifc Node version to use.'
+
+  # Package manager options
+  - name: ExternalFeedCredentials
+    type: string
+    default: ''
+    displayName: 'Names of external NPM feed credentials.'
+
+  - name: WithPackageCache
+    type: boolean
+    default: true
+    displayName: 'Whether to use package caching.'
+
+  # Publish options
+  - name: TargetRegistry
+    type: string
+    default: ''
+    displayName: 'NPM registry URL to publish to.'
+  - name: TargetRegistryCredentials
+    type: string
+    default: ''
+    displayName: 'Name of target NPM feed credentials.'
+  - name: Prerelease
+    type: string
+    default: ''
+    displayName: 'Pre-release version to publish.'
+
+steps:
+  - template: build.yml
+    parameters:
+      ProjectRoot: ${{ parameters.ProjectRoot }}
+      NodeVersion: ${{ parameters.NodeVersion }}
+      ExternalFeedCredentials: ${{ parameters.ExternalFeedCredentials }}
+      WithPackageCache: ${{ parameters.WithPackageCache }}
+
+  # Run tests
+  - ${{ if ne(parameters.NoTests, 'true') }}:
+      - ${{ each step in parameters.BeforeTestsSteps }}:
+          - ${{ step }}
+
+      - script: |
+          yarn test
+        displayName: 'YARN test'
+        workingDirectory: ${{ parameters.ProjectRoot }}
+        condition: succeededOrFailed()
+
+      - ${{ each step in parameters.AfterTestsSteps }}:
+          - ${{ step }}
+
+  # Validate change files
+  - ${{ if and( eq(parameters.WithBeachball, 'true'), eq(variables['Build.Reason'], 'PullRequest') ) }}:
+      - pwsh: |
+          $targetBranch = "$(System.PullRequest.TargetBranch)".replace('refs/heads/', 'origin/')
+          Write-Host '##vso[task.setVariable variable=TargetBranch]$targetBranch'
+        displayName: 'Resolve target branch'
+
+      - script: |
+          yarn beachball check -b $(TargetBranch)
+        displayName: 'Validate change files'
+        workingDirectory: ${{ parameters.ProjectRoot }}
+
+  # Release packages
+  - ${{ if eq(parameters.WithRelease, 'true') }}:
+      - ${{ if eq(parameters.WithBeachball, 'true') }}:
+          - template: ../../push/js/push-beachball-package.yml
+            parameters:
+              ProjectRoot: ${{ parameters.ProjectRoot }}
+              Prerelease: ${{ parameters.Prerelease }}
+              Registry: ${{ parameters.TargetRegistry }}
+              ExternalFeedCredentials: ${{ parameters.TargetRegistryCredentials }}
+              ${{ if ne(variables['Prerelease'], '') }}:
+                DistTag: canary
+              ${{ else }}:
+                DistTag: latest
