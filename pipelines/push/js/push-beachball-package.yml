@@ -33,6 +33,8 @@ steps:
 
   # Backup and replace .npmrc file
   - bash: |
+      echo "##vso[task.setvariable variable=HomeDirectory;]$HOME"
+
       if [ -f $HOME/.npmrc ]; then
         mv $HOME/.npmrc $HOME/.npmrc-backup
       fi
@@ -44,7 +46,7 @@ steps:
   - task: npmAuthenticate@0
     displayName: 'Authenticate to NPM'
     inputs:
-      workingFile: $(Agent.HomeDirectory)/.npmrc
+      workingFile: $(HomeDirectory)/.npmrc
       customEndpoint: ${{ parameters.ExternalFeedCredentials }}
 
   - pwsh: |
