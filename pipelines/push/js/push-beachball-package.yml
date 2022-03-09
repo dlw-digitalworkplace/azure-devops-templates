@@ -53,7 +53,7 @@ steps:
     workingDirectory: ${{ parameters.ProjectRoot }}
 
   - pwsh: |
-      $isMatch = (Get-Content ${{ parameters.ProjectRoot }}/.npmrc | Out-String) -match "_(?<AuthType>authToken|password)=(?<Token>.*)$"
+      $isMatch = (Get-Content ${{ parameters.ProjectRoot }}/.npmrc | Out-String) -match ":_(?<AuthType>authToken|password)=(?<Token>.*)"
       if (-not $isMatch) {
         Write-Host "No NPM auth token found in ${{ parameters.ProjectRoot }}/.npmrc"
         exit 1
