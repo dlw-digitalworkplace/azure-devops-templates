@@ -33,29 +33,28 @@ steps:
 
   # Backup and replace .npmrc file
   - bash: |
-      if [ -f ${{ parameters.ProjectRoot }}/.npmrc ]; then
-        mv ${{ parameters.ProjectRoot }}/.npmrc ${{ parameters.ProjectRoot }}/.npmrc-backup
+      if [ -f $HOME/.npmrc ]; then
+        mv $HOME/.npmrc $HOME/.npmrc-backup
       fi
       echo > .npmrc
-      echo "registry=${{ parameters.Registry }}" >> ${{ parameters.ProjectRoot }}/.npmrc
-      echo "always-auth=true" >> ${{ parameters.ProjectRoot }}/.npmrc
+      echo "registry=$HOME" >> $HOME/.npmrc
+      echo "always-auth=true" >> $HOME/.npmrc
     displayName: 'Prepare .npmrc file'
-    workingDirectory: ${{ parameters.ProjectRoot }}
 
   - task: npmAuthenticate@0
     displayName: 'Authenticate to NPM'
     inputs:
-      workingFile: ${{ parameters.ProjectRoot }}/.npmrc
+      workingFile: $(Agent.HomeDirectory)/.npmrc
       customEndpoint: ${{ parameters.ExternalFeedCredentials }}
 
   - pwsh: |
-      Get-Content ${{ parameters.ProjectRoot }}/.npmrc | Write-Host
-    workingDirectory: ${{ parameters.ProjectRoot }}
+      Get-Content $HOME/.npmrc | Write-Host
+    displayName: 'Verify .npmrc file'
 
   - pwsh: |
-      $isMatch = (Get-Content ${{ parameters.ProjectRoot }}/.npmrc | Out-String) -match ":_(?<AuthType>authToken|password)=(?<Token>.*)"
+      $isMatch = (Get-Content $HOME/.npmrc | Out-String) -match ":_(?<AuthType>authToken|password)=(?<Token>.*)"
       if (-not $isMatch) {
-        Write-Host "No NPM auth token found in ${{ parameters.ProjectRoot }}/.npmrc"
+        Write-Host "No NPM auth token found in $HOME/.npmrc"
         exit 1
       }
 
@@ -71,8 +70,6 @@ steps:
             -b origin/main \
             -y \
             -r ${{ parameters.Registry }} \
-            -n $(NPM_AUTH_TOKEN) \
-            -a $(NPM_AUTH_TYPE) \
             -t ${{ parameters.DistTag }} \
             -m 'applying frontend package updates [skip ci]'
         displayName: 'Publish NPM packages'
@@ -84,8 +81,6 @@ steps:
             -b origin/main \
             -y \
             -r ${{ parameters.Registry }} \
-            -n $(NPM_AUTH_TOKEN) \
-            -a $(NPM_AUTH_TYPE) \
             -t ${{ parameters.DistTag }} \
             --canaryName ${{ parameters.Prerelease }} \
             --no-push \
@@ -95,8 +90,7 @@ steps:
 
   # Restore .npmrc file
   - bash: |
-      if [ -f ${{ parameters.ProjectRoot }}/.npmrc-backup ]; then
-        mv ${{ parameters.ProjectRoot }}/.npmrc-backup ${{ parameters.ProjectRoot }}/.npmrc
+      if [ -f $HOME/.npmrc-backup ]; then
+        mv $HOME/.npmrc-backup $HOME/.npmrc
       fi
     displayName: 'Restore .npmrc file'
-    workingDirectory: ${{ parameters.ProjectRoot }}
