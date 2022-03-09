@@ -39,7 +39,7 @@ steps:
         mv $HOME/.npmrc $HOME/.npmrc-backup
       fi
       echo > .npmrc
-      echo "registry=$HOME" >> $HOME/.npmrc
+      echo "registry=${{ parameters.registry }}" >> $HOME/.npmrc
       echo "always-auth=true" >> $HOME/.npmrc
     displayName: 'Prepare .npmrc file'
 
@@ -52,19 +52,6 @@ steps:
   - pwsh: |
       Get-Content $HOME/.npmrc | Write-Host
     displayName: 'Verify .npmrc file'
-
-  - pwsh: |
-      $isMatch = (Get-Content $HOME/.npmrc | Out-String) -match ":_(?<AuthType>authToken|password)=(?<Token>.*)"
-      if (-not $isMatch) {
-        Write-Host "No NPM auth token found in $HOME/.npmrc"
-        exit 1
-      }
-
-      $token = $Matches.Token
-      $authType = $Matches.AuthType.ToLower()
-      echo "##vso[task.setvariable variable=NPM_AUTH_TOKEN;]$token"
-      echo "##vso[task.setvariable variable=NPM_AUTH_TYPE;]$authType"
-    displayName: 'Retrieve NPM access token'
 
   - ${{ if eq(parameters.Prerelease, '') }}:
       - script: |
