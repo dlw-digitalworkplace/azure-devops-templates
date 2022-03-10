@@ -87,7 +87,8 @@ steps:
   - ${{ if and( eq(parameters.WithBeachball, 'true'), eq(variables['Build.Reason'], 'PullRequest') ) }}:
       - pwsh: |
           $targetBranch = "$(System.PullRequest.TargetBranch)".replace('refs/heads/', 'origin/')
-          Write-Host '##vso[task.setVariable variable=TargetBranch]$targetBranch'
+          Write-Host "##vso[task.setVariable variable=TargetBranch]$targetBranch"
+          Write-Host "Resolved target branch: $targetBranch"
         displayName: 'Resolve target branch'
 
       - script: |

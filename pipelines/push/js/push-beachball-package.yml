@@ -34,6 +34,7 @@ steps:
   # Backup and replace .npmrc file
   - bash: |
       echo "##vso[task.setvariable variable=HomeDirectory;]$HOME"
+      echo "Resolved Home directory: $HOME"
 
       if [ -f $HOME/.npmrc ]; then
         mv $HOME/.npmrc $HOME/.npmrc-backup

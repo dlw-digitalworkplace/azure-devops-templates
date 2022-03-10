@@ -82,7 +82,8 @@ steps:
 
   - pwsh: |
       $packageFileName = (Split-Path -Path ${{ parameters.package }} -Leaf)
-      Write-Host '##vso[task.setVariable variable=PackageFileName]$packageFileName'
+      Write-Host "##vso[task.setVariable variable=PackageFileName]$packageFileName"
+      Write-Host "Resolved package file name: $packageFileName"
     displayName: 'Get package file name'
 
   - script: |
