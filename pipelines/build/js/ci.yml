@@ -40,7 +40,7 @@ parameters:
   - name: ExternalFeedCredentials
     type: string
     default: ''
-    displayName: 'Names of external NPM feed credentials.'
+    displayName: 'Names of external NPM feed credentials needed to install packages.'
 
   - name: WithPackageCache
     type: boolean
@@ -55,7 +55,7 @@ parameters:
   - name: TargetRegistryCredentials
     type: string
     default: ''
-    displayName: 'Name of target NPM feed credentials.'
+    displayName: 'Name of target NPM feed credentials when publishing packages.'
   - name: Prerelease
     type: string
     default: ''
