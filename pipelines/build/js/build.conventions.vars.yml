@@ -13,6 +13,8 @@ parameters:
     displayName: "Path to the package manager's lockfile."
 
 variables:
+  ProjectRoot: ${{ parameters.ProjectRoot }}
+
   LOCKFILE_PATH: ${{ parameters.ProjectRoot }}/yarn.lock
   YARN_CACHE_FOLDER: $(Pipeline.Workspace)/.yarn
 
