@@ -59,3 +59,5 @@ steps:
       yarn build
     displayName: 'YARN build'
     workingDirectory: ${{ parameters.ProjectRoot }}
+    env:
+      CI: true

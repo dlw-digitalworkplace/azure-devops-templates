@@ -79,6 +79,8 @@ steps:
         displayName: 'YARN test'
         workingDirectory: ${{ parameters.ProjectRoot }}
         condition: succeededOrFailed()
+        env:
+          CI: true
 
       - ${{ each step in parameters.AfterTestsSteps }}:
           - ${{ step }}
