@@ -75,7 +75,7 @@ steps:
           - ${{ step }}
 
       - script: |
-          yarn test
+          yarn test --verbose
         displayName: 'YARN test'
         workingDirectory: ${{ parameters.ProjectRoot }}
         condition: succeededOrFailed()

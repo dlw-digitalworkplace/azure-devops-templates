@@ -56,7 +56,7 @@ steps:
 
   # Build project
   - script: |
-      yarn build
+      yarn build --verbose
     displayName: 'YARN build'
     workingDirectory: ${{ parameters.ProjectRoot }}
     env:
