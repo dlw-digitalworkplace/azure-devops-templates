@@ -89,8 +89,8 @@ steps:
   - script: |
       m365 spo app deploy \
         --appCatalogUrl ${{ parameters.appCatalogUrl }} \
+        --appCatalogScope ${{ parameters.appCatalogScope }} \
         --name $(PackageFileName) \
-        --scope ${{ parameters.appCatalogScope }} \
         --verbose \
         ${{ parameters.extraDeployArgs }}
     displayName: 'Deploy SPFx package'
