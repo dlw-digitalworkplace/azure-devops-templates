@@ -48,7 +48,7 @@ steps:
           secureFile: ${{ parameters.certificateFile }}
 
   - script: |
-      yarn global add @pnp/cli-microsoft365
+      yarn global add @pnp/cli-microsoft365@6
     displayName: 'Install M365 CLI'
 
   - ${{ if ne(parameters.certificateFile, '') }}:
@@ -74,8 +74,8 @@ steps:
   - script: |
       m365 spo app add \
         --appCatalogUrl ${{ parameters.appCatalogUrl }} \
+        --appCatalogScope ${{ parameters.appCatalogScope }} \
         --filePath ${{ parameters.package }} \
-        --scope ${{ parameters.appCatalogScope }} \
         --overwrite \
         --verbose
     displayName: 'Upload SPFx package'
