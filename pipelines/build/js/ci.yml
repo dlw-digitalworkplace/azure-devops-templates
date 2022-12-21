@@ -62,6 +62,19 @@ parameters:
     displayName: 'Pre-release version to publish.'
 
 steps:
+  # Validate change files
+  - ${{ if and( eq(parameters.WithBeachball, 'true'), eq(variables['Build.Reason'], 'PullRequest') ) }}:
+      - pwsh: |
+          $targetBranch = "$(System.PullRequest.TargetBranch)".replace('refs/heads/', 'origin/')
+          Write-Host "##vso[task.setVariable variable=TargetBranch]$targetBranch"
+          Write-Host "Resolved target branch: $targetBranch"
+        displayName: 'Resolve target branch'
+
+      - script: |
+          yarn beachball check -b $(TargetBranch)
+        displayName: 'Validate change files'
+        workingDirectory: ${{ parameters.ProjectRoot }}
+
   - template: build.yml
     parameters:
       ProjectRoot: ${{ parameters.ProjectRoot }}
@@ -84,19 +97,6 @@ steps:
 
       - ${{ each step in parameters.AfterTestsSteps }}:
           - ${{ step }}
-
-  # Validate change files
-  - ${{ if and( eq(parameters.WithBeachball, 'true'), eq(variables['Build.Reason'], 'PullRequest') ) }}:
-      - pwsh: |
-          $targetBranch = "$(System.PullRequest.TargetBranch)".replace('refs/heads/', 'origin/')
-          Write-Host "##vso[task.setVariable variable=TargetBranch]$targetBranch"
-          Write-Host "Resolved target branch: $targetBranch"
-        displayName: 'Resolve target branch'
-
-      - script: |
-          yarn beachball check -b $(TargetBranch)
-        displayName: 'Validate change files'
-        workingDirectory: ${{ parameters.ProjectRoot }}
 
   # Release packages
   - ${{ if eq(parameters.WithRelease, 'true') }}:
