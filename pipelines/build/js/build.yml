@@ -32,7 +32,7 @@ steps:
           versionSpec: ${{ parameters.NodeVersion }}
 
   - ${{ if ne(parameters.ExternalFeedCredentials, '') }}:
-      - task: npmAuthenticate@0
+      - task: npmAuthenticate@0.238.3
         displayName: 'NPM Authenticate'
         inputs:
           workingFile: ${{ parameters.ProjectRoot }}/.npmrc
