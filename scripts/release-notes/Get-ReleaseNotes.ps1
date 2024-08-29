@@ -67,6 +67,9 @@ $dict = New-Object 'System.Collections.Generic.Dictionary[String, Object]'
 
 New-Item -Path $pth -ItemType File -Force
 Get-ChildItem -Path $changeLogFolderPath/*.json | ForEach-Object {
+
+    Write-Host "Found file $($_.Name)"
+
     $releaseNotes = Get-Content -Path $changeLogFolderPath/$($_.Name) -Raw | ConvertFrom-Json
     $date = Get-Date -Date $releaseNotes.date -Format "yyyy/MM/dd"
     $version = $releaseNotes.version
@@ -74,6 +77,8 @@ Get-ChildItem -Path $changeLogFolderPath/*.json | ForEach-Object {
     if ($version -lt $fromVersion -and ($tillVersion -eq "N/A" -or $version -ge $tillVersion)) {
         continue
     }
+
+    Write-Host "Adding lines for file $($_.Name)"
 
     $lines = New-Object System.Collections.Generic.List[System.String]
     
@@ -111,12 +116,19 @@ Get-ChildItem -Path $changeLogFolderPath/*.json | ForEach-Object {
     $dict.Add($version, $lines)
 }
 
+Write-Host "Dict count: $($dict.Count)"
+
 # Sort by version number
 $sortedLines = $dict.GetEnumerator() | Sort-Object -Property Key | ForEach-Object {
     $_.Value
 }
 
+Write-Host "Writing lines to: $($pth)"
+
 # Write to file
 $sortedLines | ForEach-Object {
+    Write-Host "Writing line: $($_)"
     $_ | Out-File -FilePath $pth -Append
 }
+
+Write-Host "End of generating release notes"
