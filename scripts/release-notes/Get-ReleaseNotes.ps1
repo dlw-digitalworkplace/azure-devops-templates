@@ -62,6 +62,20 @@ $outputConfig = @{
 $pth = "$sourcesDirectory/$releaseNotesOutputPath"
 $changeLogFolderPath = "$sourcesDirectory/$changeLogFolder"
 
+Write-Host "Logging sources directory contents..."
+Get-ChildItem $sourcesDirectory
+
+Write-Host "output path for release notes..."
+Write-Host $pth
+
+Write-Host "Logging change log folder path contents..."
+Get-ChildItem $changeLogFolderPath
+
+if (-not (Test-Path -Path $changeLogFolderPath)) {
+    Write-Output "Change log folder not found: $changeLogFolderPath"
+    exit 1
+}
+
 $engine = New-Object -TypeName ReleaseNotes
 $dict = New-Object 'System.Collections.Generic.Dictionary[String, Object]'
 
