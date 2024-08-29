@@ -37,11 +37,20 @@ class ReleaseNotes {
 
                 $lines.Add(" - $($title)")
                 if ($true -eq $outputConfig.includeDescription -and $null -ne $note.publicDescription) {
-                    $lines.Add("   - $($note.publicDescription)")
+                    if($note.publicDescription.Length -eq 1 -and $note.publicDescription[0] -eq "") {
+                        # do nothing
+                    } else {
+                        $lines.Add("   - $($note.publicDescription)")
+                    }
                 }
 
                 if ($true -eq $outputConfig.includeTechnicalNotes -and $null -ne $note.technicalNotes) {
-                    $lines.Add("   - Technical: $($note.technicalNotes)")
+
+                    if($note.technicalNotes.Length -eq 1 -and $note.technicalNotes[0] -eq "") {
+                        # do nothing
+                    } else {
+                        $lines.Add("   - Technical: $($note.technicalNotes)")
+                    }
                 }
             }
 
