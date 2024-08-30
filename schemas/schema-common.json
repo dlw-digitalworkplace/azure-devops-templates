@@ -1,0 +1,57 @@
+{
+  "$schema": "https://json-schema.org/draft-07/schema",
+  "$id": "https://dwip.delaware.pro/schemas/common.json",
+  "title": "Common types",
+  "description": "Describes common types usable in all JSON schemas.",
+  "definitions": {
+    "change": {
+      "description": "A change for the release notes",
+      "type": "object",
+      "properties": {
+        "component": {
+          "description": "// Empty = \"Other\" Sample values: General, <web part name>, <feature name>, Frontend, Backend, Stability fixes...",
+          "type": "string"
+        },
+        "impact": {
+          "description": "What is the impact of this change?",
+          "type": "string"
+        },
+        "isBreakingChange": {
+          "description": "Indicate if this change is a breaking change. If not set, it's considered as false.",
+          "type": "boolean"
+        },
+        "isTechnicalChange": {
+          "description": "Indicate if this change has purely technical value.",
+          "type": "boolean"
+        },
+        "publicDescription": {
+          "description": "Array will turn into multiline comment, so you can use markdown (e.g. ##, lists)",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "readiness": {
+          "type": "string",
+          "enum": [
+            "directly available",
+            "requires config",
+            "requires customization"
+          ]
+        },
+        "technicalNotes": {
+          "description": "Array will turn into multiline comment, so you can use markdown (e.g. ##, lists)",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "title": {
+          "description": "e.g. Use new Entity Framework Core version",
+          "type": "string"
+        }
+      },
+      "required": ["title", "readiness"]
+    }
+  }
+}
