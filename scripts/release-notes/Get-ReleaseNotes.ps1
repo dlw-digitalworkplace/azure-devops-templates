@@ -6,6 +6,10 @@ param(
     [Parameter(Mandatory=$true)]
     [bool]$includeDeploymentNotes,
     [Parameter(Mandatory=$true)]
+    [bool]$includeChangeTechnical,
+    [Parameter(Mandatory=$true)]
+    [bool]$includeChangeNonTechnical,
+    [Parameter(Mandatory=$true)]
     [bool]$includeDescription,
     [Parameter(Mandatory=$true)]
     [bool]$includeTechnicalNotes,
@@ -18,24 +22,37 @@ param(
 )
 
 class ReleaseNotes {
-    [System.Collections.Generic.List[System.String]]return_lines($pth, $notes, $outputConfig) {
+    [System.Collections.Generic.List[System.String]]return_lines($pth, $changes, $outputConfig) {
         $lines = New-Object System.Collections.Generic.List[System.String]
 
-        $notes = $notes | ForEach-Object {
+        $changes = $changes | ForEach-Object {
             $component = if ([string]::IsNullOrEmpty($_.component)) { "Miscellaneous" } else { $_.component }
             $_ | Add-Member -NotePropertyName 'component' -NotePropertyValue $component -Force -PassThru
         }
 
-        $notes | Group-Object -Property component | ForEach-Object {
+        $changes | Group-Object -Property component | ForEach-Object {
+            if ($includeChangeTechnical -eq $false -and $_.isTechnicalChange -eq $true) {
+                continue
+            }
+
+            if ($includeChangeNonTechnical -eq $false -and $_.isTechnicalChange -eq $false) {
+                continue
+            }
+
             $component = $_.Name
             $lines.Add("### $component")
             $_.Group | ForEach-Object {
                 $note = $_
+
                 $title = [string]::IsNullOrEmpty($note.title) ? "<-- No title provided -->" : $note.title
                 if (-not [string]::IsNullOrEmpty($note.readiness)) { $title = "$($title) ($($note.readiness))"}
                 if ($note.isBreakingChange) { $title = "! BREAKING ! $($title)"}
-
                 $lines.Add(" - $($title)")
+                
+                if (-not [string]::IsNullOrEmpty($note.impact)) {
+                    $lines.Add("Impact: $($note.impact)")
+                }
+
                 if ($true -eq $outputConfig.includeDescription -and $null -ne $note.publicDescription) {
                     if($note.publicDescription.Length -eq 1 -and $note.publicDescription[0] -eq "") {
                         # do nothing
@@ -68,6 +85,7 @@ $outputConfig = @{
     includeTechnicalNotes = $includeTechnicalNotes
 }
 
+# <#
 $pth = "$sourcesDirectory/$releaseNotesOutputPath"
 $changeLogFolderPath = "$sourcesDirectory/$changeLogFolder"
 
@@ -80,10 +98,12 @@ Write-Host $pth
 Write-Host "Logging change log folder path contents..."
 Get-ChildItem $changeLogFolderPath
 
+
 if (-not (Test-Path -Path $changeLogFolderPath)) {
     Write-Output "Change log folder not found: $changeLogFolderPath"
     exit 1
 }
+#>
 
 $engine = New-Object -TypeName ReleaseNotes
 $dict = New-Object 'System.Collections.Generic.Dictionary[String, Object]'
@@ -91,21 +111,22 @@ $dict = New-Object 'System.Collections.Generic.Dictionary[String, Object]'
 New-Item -Path $pth -ItemType File -Force
 Get-ChildItem -Path $changeLogFolderPath/*.json | ForEach-Object {
 
-    Write-Host "Found file $($_.Name)"
-
     $releaseNotes = Get-Content -Path $changeLogFolderPath/$($_.Name) -Raw | ConvertFrom-Json
     $date = Get-Date -Date $releaseNotes.date -Format "yyyy/MM/dd"
     $version = $releaseNotes.version
+    $highLevelDescription = $releaseNotes.highLevelDescription
+    
+    if(-not [string]::IsNullOrEmpty($highLevelDescription)){
+        $highLevelDescription = "- $highLevelDescription"
+    }
 
     if ($version -lt $fromVersion -and ($tillVersion -eq "N/A" -or $version -ge $tillVersion)) {
         continue
     }
 
-    Write-Host "Adding lines for file $($_.Name)"
-
     $lines = New-Object System.Collections.Generic.List[System.String]
     
-    $lines.Add("# Connect v$($version) ($($date))")
+    $lines.Add("# Connect v$($version) ($($date)) $($highLevelDescription)")
     
     if ($releaseNotes.comments.major.length -gt 0) {
         $lines.Add("`n## Major changes")
