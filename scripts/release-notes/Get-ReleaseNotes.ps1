@@ -12,8 +12,6 @@ param(
     [Parameter(Mandatory=$true)]
     [bool]$includeDescription,
     [Parameter(Mandatory=$true)]
-    [bool]$includeTechnicalNotes,
-    [Parameter(Mandatory=$true)]
     [string]$releaseNotesOutputPath,
     [Parameter(Mandatory=$true)]
     [string]$sourcesDirectory,
@@ -31,11 +29,11 @@ class ReleaseNotes {
         }
 
         $changes | Group-Object -Property component | ForEach-Object {
-            if ($includeChangeTechnical -eq $false -and $_.isTechnicalChange -eq $true) {
+            if ($outputConfig.includeChangeTechnical -eq $false -and $_.isTechnicalChange -eq $true) {
                 continue
             }
 
-            if ($includeChangeNonTechnical -eq $false -and $_.isTechnicalChange -eq $false) {
+            if ($outputConfig.includeChangeNonTechnical -eq $false -and $_.isTechnicalChange -eq $false) {
                 continue
             }
 
@@ -61,7 +59,7 @@ class ReleaseNotes {
                     }
                 }
 
-                if ($true -eq $outputConfig.includeTechnicalNotes -and $null -ne $note.technicalNotes) {
+                if ($true -eq $outputConfig.includeChangeTechnical -and $null -ne $note.technicalNotes) {
 
                     if($note.technicalNotes.Length -eq 1 -and $note.technicalNotes[0] -eq "") {
                         # do nothing
@@ -81,8 +79,9 @@ class ReleaseNotes {
 Write-Output "Start generating release notes..."
 
 $outputConfig = @{
+    includeChangeNonTechnical = $includeChangeNonTechnical
+    includeChangeTechnical = $includeChangeTechnical
     includeDescription = $includeDescription
-    includeTechnicalNotes = $includeTechnicalNotes
 }
 
 # <#
