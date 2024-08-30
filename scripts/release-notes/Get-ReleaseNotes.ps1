@@ -48,7 +48,7 @@ class ReleaseNotes {
                 $lines.Add(" - $($title)")
                 
                 if (-not [string]::IsNullOrEmpty($note.impact)) {
-                    $lines.Add("Impact: $($note.impact)")
+                    $lines.Add("   - Impact: $($note.impact)")
                 }
 
                 if ($true -eq $outputConfig.includeDescription -and $null -ne $note.publicDescription) {
