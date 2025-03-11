@@ -162,7 +162,7 @@ Get-ChildItem -Path $changeLogFolderPath/*.json | ForEach-Object {
 Write-Host "Dict count: $($dict.Count)"
 
 # Sort by version number
-$sortedLines = $dict.GetEnumerator() | Sort-Object -Property Key | ForEach-Object {
+$sortedLines = $dict.GetEnumerator() | Sort-Object -Property Key -Descending | ForEach-Object {
     $_.Value
 }
 
