@@ -72,18 +72,12 @@ steps:
 
   - ${{ if ne(parameters.certificateFile, '') }}:
       - script: |
-          m365 login --authType certificate --certificateFile $(deploymentCertificate.secureFilePath)
+          m365 login --appId ${{ parameters.aadClientId }} --tenant ${{ parameters.aadTenantId }} --authType certificate --certificateFile $(deploymentCertificate.secureFilePath)
         displayName: 'Connect to SharePoint Online'
-        env:
-          CLIMICROSOFT365_AADAPPID: ${{ parameters.aadClientId }}
-          CLIMICROSOFT365_TENANT: ${{ parameters.aadTenantId }}
   - ${{ elseif ne(parameters.certificateFilePath, '') }}:
       - script: |
-          m365 login --authType certificate --certificateFile ${{ parameters.certificateFilePath }}
+          m365 login --appId ${{ parameters.aadClientId }} --tenant ${{ parameters.aadTenantId }} --authType certificate --certificateFile ${{ parameters.certificateFilePath }}
         displayName: 'Connect to SharePoint Online'
-        env:
-          CLIMICROSOFT365_AADAPPID: ${{ parameters.aadClientId }}
-          CLIMICROSOFT365_TENANT: ${{ parameters.aadTenantId }}
   - ${{ else }}:
       - script: |
           echo "No authentication certificate specified."
