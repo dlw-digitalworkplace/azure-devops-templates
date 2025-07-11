@@ -68,7 +68,7 @@ steps:
 
   - script: |
       yarn global add @pnp/cli-microsoft365@${{ parameters.CLIVersion }}
-    displayName: 'Install M365 CLI'
+    displayName: 'Install M365 CLI version ${{ parameters.CLIVersion }}'
 
   - ${{ if ne(parameters.certificateFile, '') }}:
       - script: |
