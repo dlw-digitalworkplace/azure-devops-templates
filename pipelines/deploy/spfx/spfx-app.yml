@@ -33,6 +33,18 @@ parameters:
     type: string
     displayName: 'Azure AD tenant ID.'
 
+  # NodeJS options
+  - name: NodeVersion
+    type: string
+    default: ''
+    displayName: 'Specifc Node version to use.'
+
+  # M365 CLI options
+  - name: CLIVersion
+    type: string
+    default: '6'
+    displayName: 'M365 CLI version to use'
+
   # Additional command steps
   - name: extraDeployArgs
     type: string
@@ -40,6 +52,13 @@ parameters:
     displayName: 'Additional arguments to pass to the deploy command.'
 
 steps:
+  # Setup prerequisites
+  - ${{ if ne(parameters.NodeVersion, '') }}:
+      - task: NodeTool@0
+        displayName: 'Use specific NodeJS tool version ${{ parameters.NodeVersion }}'
+        inputs:
+          versionSpec: ${{ parameters.NodeVersion }}
+
   - ${{ if ne(parameters.certificateFile, '') }}:
       - task: DownloadSecureFile@1
         name: deploymentCertificate
@@ -48,23 +67,17 @@ steps:
           secureFile: ${{ parameters.certificateFile }}
 
   - script: |
-      yarn global add @pnp/cli-microsoft365@6
-    displayName: 'Install M365 CLI'
+      yarn global add @pnp/cli-microsoft365@${{ parameters.CLIVersion }}
+    displayName: 'Install M365 CLI version ${{ parameters.CLIVersion }}'
 
   - ${{ if ne(parameters.certificateFile, '') }}:
       - script: |
-          m365 login --authType certificate --certificateFile $(deploymentCertificate.secureFilePath)
+          m365 login --appId ${{ parameters.aadClientId }} --tenant ${{ parameters.aadTenantId }} --authType certificate --certificateFile $(deploymentCertificate.secureFilePath)
         displayName: 'Connect to SharePoint Online'
-        env:
-          CLIMICROSOFT365_AADAPPID: ${{ parameters.aadClientId }}
-          CLIMICROSOFT365_TENANT: ${{ parameters.aadTenantId }}
   - ${{ elseif ne(parameters.certificateFilePath, '') }}:
       - script: |
-          m365 login --authType certificate --certificateFile ${{ parameters.certificateFilePath }}
+          m365 login --appId ${{ parameters.aadClientId }} --tenant ${{ parameters.aadTenantId }} --authType certificate --certificateFile ${{ parameters.certificateFilePath }}
         displayName: 'Connect to SharePoint Online'
-        env:
-          CLIMICROSOFT365_AADAPPID: ${{ parameters.aadClientId }}
-          CLIMICROSOFT365_TENANT: ${{ parameters.aadTenantId }}
   - ${{ else }}:
       - script: |
           echo "No authentication certificate specified."
