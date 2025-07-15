@@ -36,13 +36,13 @@ parameters:
   # NodeJS options
   - name: NodeVersion
     type: string
-    default: ''
+    default: '24'
     displayName: 'Specifc Node version to use.'
 
   # M365 CLI options
   - name: CLIVersion
     type: string
-    default: '6'
+    default: '10'
     displayName: 'M365 CLI version to use'
 
   # Additional command steps
@@ -53,11 +53,10 @@ parameters:
 
 steps:
   # Setup prerequisites
-  - ${{ if ne(parameters.NodeVersion, '') }}:
-      - task: NodeTool@0
-        displayName: 'Use specific NodeJS tool version ${{ parameters.NodeVersion }}'
-        inputs:
-          versionSpec: ${{ parameters.NodeVersion }}
+  - task: NodeTool@0
+    displayName: 'Use specific NodeJS tool version ${{ parameters.NodeVersion }}'
+    inputs:
+      versionSpec: ${{ parameters.NodeVersion }}
 
   - ${{ if ne(parameters.certificateFile, '') }}:
       - task: DownloadSecureFile@1
