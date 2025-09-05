@@ -11,19 +11,19 @@
         "major": {
           "type": "array",
           "items": {
-            "$ref": "https://dlw365devconnectfuncsa.blob.core.windows.net/dw-ip-schemas/schema-common.json#/definitions/change"
+            "$ref": "https://dlw365qassa.blob.core.windows.net/dw-ip-schemas/schema-common.json#/definitions/change"
           }
         },
         "minor": {
           "type": "array",
           "items": {
-            "$ref": "https://dlw365devconnectfuncsa.blob.core.windows.net/dw-ip-schemas/schema-common.json#/definitions/change"
+            "$ref": "https://dlw365qassa.blob.core.windows.net/dw-ip-schemas/schema-common.json#/definitions/change"
           }
         },
         "patch": {
           "type": "array",
           "items": {
-            "$ref": "https://dlw365devconnectfuncsa.blob.core.windows.net/dw-ip-schemas/schema-common.json#/definitions/change"
+            "$ref": "https://dlw365qassa.blob.core.windows.net/dw-ip-schemas/schema-common.json#/definitions/change"
           }
         }
       }
