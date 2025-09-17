@@ -26,6 +26,10 @@ parameters:
     type: string
     default: ''
     displayName: 'File path to the authentication certificate.'
+  - name: certificateBase64Encoded
+    type: string
+    default: ''
+    displayName: 'Certificate name in Azure Key Vault via KV connected variable group'
   - name: aadClientId
     type: string
     displayName: "Azure AD deployment application's client ID."
@@ -77,6 +81,10 @@ steps:
       - script: |
           m365 login --appId ${{ parameters.aadClientId }} --tenant ${{ parameters.aadTenantId }} --authType certificate --certificateFile ${{ parameters.certificateFilePath }}
         displayName: 'Connect to SharePoint Online'
+  - ${{ elseif ne(parameters.certificateBase64Encoded, '') }}: # get parameter from KV connected variable group
+      - script: |
+          m365 login --appId ${{ parameters.aadClientId }} --tenant ${{ parameters.aadTenantId }} --authType certificate --certificateBase64Encoded ${{ parameters.certificateBase64Encoded }} 
+        displayName: "Test connect to M365 CLI"
   - ${{ else }}:
       - script: |
           echo "No authentication certificate specified."
