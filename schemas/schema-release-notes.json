@@ -1,0 +1,61 @@
+{
+  "$schema": "https://json-schema.org/draft-07/schema",
+  "$id": "https://dwip.delaware.pro/schemas/schema-release-notes.json",
+  "title": "DW IP Release notes",
+  "description": "Defines the way DW IP release notes are structured.",
+  "properties": {
+    "$schema": { "type": "string" },
+    "comments": {
+      "type": "object",
+      "properties": {
+        "major": {
+          "type": "array",
+          "items": {
+            "$ref": "https://dlw365qassa.blob.core.windows.net/dw-ip-schemas/schema-common.json#/definitions/change"
+          }
+        },
+        "minor": {
+          "type": "array",
+          "items": {
+            "$ref": "https://dlw365qassa.blob.core.windows.net/dw-ip-schemas/schema-common.json#/definitions/change"
+          }
+        },
+        "patch": {
+          "type": "array",
+          "items": {
+            "$ref": "https://dlw365qassa.blob.core.windows.net/dw-ip-schemas/schema-common.json#/definitions/change"
+          }
+        }
+      }
+    },
+    "date": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Date when version was created (e.g. 2024-03-08T12:00:00.000Z)"
+    },
+    "highLevelDescription": {
+      "type": "string",
+      "description": "High level description of the release"
+    },
+    "postDeploymentNotes": {
+      "type": "array",
+      "description": "steps to be performed after the deployment. e.g. \"Run SQL upgrade script\", ...",
+      "items": {
+        "type": "string"
+      }
+    },
+    "preDeploymentNotes": {
+      "type": "array",
+      "description": "steps to be performed before the deployment. e.g. \"Create service account\", ...",
+      "items": {
+        "type": "string"
+      }
+    },
+    "version": {
+      "type": "string",
+      "description": "Semantic versioning of the release (e.g. 1.0.0)"
+    }
+  },
+  "required": ["comments", "date", "version"],
+  "additionalProperties": false
+}
