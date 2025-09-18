@@ -29,7 +29,7 @@ parameters:
   - name: certificateBase64Encoded
     type: string
     default: ''
-    displayName: 'Certificate as base 64 encoded string'
+    displayName: 'Base64-encoded string with certificate private key'
   - name: aadClientId
     type: string
     displayName: "Azure AD deployment application's client ID."
