@@ -29,7 +29,7 @@ parameters:
   - name: certificateBase64Encoded
     type: string
     default: ''
-    displayName: 'Certificate name in Azure Key Vault via KV connected variable group'
+    displayName: 'Certificate as base 64 encoded string'
   - name: aadClientId
     type: string
     displayName: "Azure AD deployment application's client ID."
