@@ -26,6 +26,10 @@ parameters:
     type: string
     default: ''
     displayName: 'File path to the authentication certificate.'
+  - name: certificateBase64Encoded
+    type: string
+    default: ''
+    displayName: 'Base64-encoded string with certificate private key'
   - name: aadClientId
     type: string
     displayName: "Azure AD deployment application's client ID."
@@ -77,6 +81,10 @@ steps:
       - script: |
           m365 login --appId ${{ parameters.aadClientId }} --tenant ${{ parameters.aadTenantId }} --authType certificate --certificateFile ${{ parameters.certificateFilePath }}
         displayName: 'Connect to SharePoint Online'
+  - ${{ elseif ne(parameters.certificateBase64Encoded, '') }}:
+      - script: |
+          m365 login --appId ${{ parameters.aadClientId }} --tenant ${{ parameters.aadTenantId }} --authType certificate --certificateBase64Encoded ${{ parameters.certificateBase64Encoded }} 
+        displayName: "Connect to SharePoint Online"
   - ${{ else }}:
       - script: |
           echo "No authentication certificate specified."
