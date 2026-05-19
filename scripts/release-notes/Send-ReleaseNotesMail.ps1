@@ -5,6 +5,7 @@ param(
     [Parameter(Mandatory=$true)]  [string]$configPath,
     [Parameter(Mandatory=$true)]  [string]$latestRelease,
     [Parameter(Mandatory=$true)]  [string]$pdfConversionDriveId,
+    [Parameter(Mandatory=$true)]  [string]$fromAddress,
     [Parameter(Mandatory=$false)] [string]$pdfConversionFolderPath = ""
 )
 
@@ -47,98 +48,84 @@ foreach ($item in $listItems) {
     Write-Host "dlwrToRecipients:   $($fields.dlwrToRecipients)"
 }
 
+foreach ($customer in $listItems) {
+    $fields = $customer.Fields.AdditionalProperties
 
-# === Load config and release notes ===
-$configLocation = "$sourcesDirectory/$configPath"
-$configMail = Get-Content -Path $configLocation -Raw | ConvertFrom-Json
+    $attachmentName = $fields.dlwrAttachmentName
+    $IpName = $fields.dlwrIpName
 
-$releaseNotesLocation = "$sourcesDirectory/$releaseNotesPath"
-$releaseNotesHtml = (ConvertFrom-Markdown -Path $releaseNotesLocation).Html
+    # === Convert markdown to PDF via Microsoft Graph SDK ===
+    $uniqueMdName = "$IpName-release-notes-$latestRelease.md"
 
-$placeholders = @{
-    "version"      = $latestRelease
-    "releaseNotes" = $releaseNotesHtml
-}
+    # Normalize folder path: empty -> root of drive; otherwise trim slashes and append one
+    $folderPrefix = ""
+    if (-not [string]::IsNullOrWhiteSpace($pdfConversionFolderPath)) {
+        $folderPrefix = $pdfConversionFolderPath.Trim('/') + '/'
+    }
 
-Write-Host "Config location:        $configLocation"
-Write-Host "Release notes location: $releaseNotesLocation"
+    $driveId = $pdfConversionDriveId # Documents from /sites/ip-release-notes
+    Write-Host "Using drive ID: $driveId"
 
-$mailSubject     = Set-Placeholders -textToReplace $configMail.mailSubject     -placeholders $placeholders
-$mailBody        = Set-Placeholders -textToReplace $configMail.mailBody        -placeholders $placeholders
-$attachementName = Set-Placeholders -textToReplace $configMail.attachementName -placeholders $placeholders
+    # Path-syntax DriveItemId for creating a new file by path
+    $uploadItemPath = "root:/${folderPrefix}${uniqueMdName}:"
+    $pdfLocalPath   = "$sourcesDirectory/$attachmentName"
+    $uploadedItemId = $null
+    $releaseNotesLocation = "$sourcesDirectory/$releaseNotesPath"
 
-# === Convert markdown to PDF via Microsoft Graph SDK ===
-$uniqueMdName = "release-notes-$latestRelease.md"
+    try {
+        Write-Host "Uploading markdown to drive item: $uploadItemPath"
+        $uploadResponse = Set-MgDriveItemContent `
+            -DriveId $driveId `
+            -DriveItemId $uploadItemPath `
+            -InFile $releaseNotesLocation
+        $uploadedItemId = $uploadResponse.Id
+        Write-Host "Uploaded as driveItem: $uploadedItemId"
 
-# Normalize folder path: empty -> root of drive; otherwise trim slashes and append one
-$folderPrefix = ""
-if (-not [string]::IsNullOrWhiteSpace($pdfConversionFolderPath)) {
-    $folderPrefix = $pdfConversionFolderPath.Trim('/') + '/'
-}
-
-$driveId = $pdfConversionDriveId
-Write-Host "Using drive ID: $driveId"
-
-# Path-syntax DriveItemId for creating a new file by path
-$uploadItemPath = "root:/${folderPrefix}${uniqueMdName}:"
-$pdfLocalPath   = "$sourcesDirectory/$attachementName"
-$uploadedItemId = $null
-
-try {
-    Write-Host "Uploading markdown to drive item: $uploadItemPath"
-    $uploadResponse = Set-MgDriveItemContent `
-        -DriveId $driveId `
-        -DriveItemId $uploadItemPath `
-        -InFile $releaseNotesLocation
-    $uploadedItemId = $uploadResponse.Id
-    Write-Host "Uploaded as driveItem: $uploadedItemId"
-
-    Write-Host "Converting to PDF..."
-    Get-MgDriveItemContent `
-        -DriveId $driveId `
-        -DriveItemId $uploadedItemId `
-        -Format pdf `
-        -OutFile $pdfLocalPath
-    Write-Host "PDF saved to: $pdfLocalPath"
-}
-finally {
-    if ($uploadedItemId) {
-        Write-Host "Cleaning up scratch driveItem $uploadedItemId"
-        try {
-            Remove-MgDriveItem -DriveId $driveId -DriveItemId $uploadedItemId
-        } catch {
-            Write-Warning "Failed to delete scratch driveItem: $($_.Exception.Message)"
+        Write-Host "Converting to PDF..."
+        Get-MgDriveItemContent `
+            -DriveId $driveId `
+            -DriveItemId $uploadedItemId `
+            -Format pdf `
+            -OutFile $pdfLocalPath
+        Write-Host "PDF saved to: $pdfLocalPath"
+    }
+    finally {
+        if ($uploadedItemId) {
+            Write-Host "Cleaning up scratch driveItem $uploadedItemId"
+            try {
+                Remove-MgDriveItem -DriveId $driveId -DriveItemId $uploadedItemId
+            } catch {
+                Write-Warning "Failed to delete scratch driveItem: $($_.Exception.Message)"
+            }
         }
     }
-}
 
-# === Send mail ===
-$pdfContent = [Convert]::ToBase64String([IO.File]::ReadAllBytes($pdfLocalPath))
+    # === Send mail ===
+    $pdfContent = [Convert]::ToBase64String([IO.File]::ReadAllBytes($pdfLocalPath))
 
-foreach ($customer in $configMail.customers) {
-    Write-Host "Processing customer: $($customer.name)"
+    Write-Host "Processing customer: $($fields.dlwrCustomerName)"
 
     $params = @{
         message = @{
-            subject = $mailSubject
+            subject = $fields.dlwrMailSubject
             body = @{
                 contentType = "HTML"
-                content     = $mailBody
+                content     = $fields.dlwrMailBody
             }
             toRecipients = @(
-                $customer.toRecipients | ForEach-Object {
+                $fields.dlwrToRecipients -split ';' | ForEach-Object { $_.Trim() } | Where-Object { $_ } | ForEach-Object {
                     @{ emailAddress = @{ address = $_ } }
                 }
             )
             CcRecipients = @(
-                $customer.ccRecipients | ForEach-Object {
+                $fields.dlwrCcRecipients -split ';' | ForEach-Object { $_.Trim() } | Where-Object { $_ } | ForEach-Object {
                     @{ emailAddress = @{ address = $_ } }
                 }
             )
             attachments = @(
                 @{
                     "@odata.type" = "#microsoft.graph.fileAttachment"
-                    name          = $attachementName
+                    name          = $fields.dlwrAttachmentName
                     contentType   = "application/pdf"
                     contentBytes  = $pdfContent
                 }
@@ -146,6 +133,6 @@ foreach ($customer in $configMail.customers) {
         }
     }
 
-    Write-Host "Sending email to: $($customer.toRecipients -join ', ')"
-    Send-MgUserMail -UserId $configMail.fromAddress -BodyParameter $params
+    Write-Host "Sending email to: $($fields.dlwrToRecipients)"
+    Send-MgUserMail -UserId $fromAddress -BodyParameter $params
 }
