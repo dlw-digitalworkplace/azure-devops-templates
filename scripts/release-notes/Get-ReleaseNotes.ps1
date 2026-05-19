@@ -114,49 +114,54 @@ Get-ChildItem -Path $changeLogFolderPath/*.json | ForEach-Object {
     $date = Get-Date -Date $releaseNotes.date -Format "yyyy/MM/dd"
     $version = $releaseNotes.version
     $highLevelDescription = $releaseNotes.highLevelDescription
-    
+
     if(-not [string]::IsNullOrEmpty($highLevelDescription)){
         $highLevelDescription = "- $highLevelDescription"
     }
 
-    if ($version -lt $fromVersion -and ($tillVersion -eq "N/A" -or $version -ge $tillVersion)) {
-        continue
-    }
+    if (!([System.Version]$version -lt [System.Version]$fromVersion -or ($tillVersion -ne "N/A" -and [System.Version]$version -ge [System.Version]$tillVersion))) {
+        $lines = New-Object System.Collections.Generic.List[System.String]
 
-    $lines = New-Object System.Collections.Generic.List[System.String]
-    
-    $lines.Add("# Connect v$($version) ($($date)) $($highLevelDescription)")
-    
-    if ($releaseNotes.comments.major.length -gt 0) {
-        $lines.Add("`n## Major changes")
-        $lines.AddRange($engine.return_lines($pth, $releaseNotes.comments.major, $outputConfig))
-    }
-
-    if ($releaseNotes.comments.minor.length -gt 0) {
-        $lines.Add("`n## Minor changes")
-        $lines.AddRange($engine.return_lines($pth, $releaseNotes.comments.minor, $outputConfig))
-    }
-
-    if ($releaseNotes.comments.patch.length -gt 0) {
-        $lines.Add("`n## Patches")
-        $lines.AddRange($engine.return_lines($pth, $releaseNotes.comments.patch, $outputConfig))
-    }
-
-    if($true -eq $includeDeploymentNotes){
-        if($null -ne $releaseNotes.preDeploymentNotes -and $releaseNotes.preDeploymentNotes.length -gt 0){
-            $lines.Add("`n## Predeployment notes")
-            $releaseNotes.preDeploymentNotes | ForEach-Object {$lines.Add($_)}
+        $ratingText = ""
+        if ($releaseNotes.updateEffort -ne $null) {
+            $filledStars = [string]("★" * [int]$releaseNotes.updateEffort)
+            $emptyStars = [string]("☆" * (5 - [int]$releaseNotes.updateEffort))
+            $ratingText = "$filledStars$emptyStars"
         }
 
-        if($null -ne $releaseNotes.postDeploymentNotes -and $releaseNotes.postDeploymentNotes.length -gt 0){
-            $lines.Add("`n## Postdeployment notes")
-            $releaseNotes.postDeploymentNotes | ForEach-Object {$lines.Add($_)}
+        $lines.Add("# Connect v$($version) ($($date)) $($highLevelDescription) $($ratingText)")
+
+        if ($releaseNotes.comments.major.length -gt 0) {
+            $lines.Add("`n## Major changes")
+            $lines.AddRange($engine.return_lines($pth, $releaseNotes.comments.major, $outputConfig))
         }
+
+        if ($releaseNotes.comments.minor.length -gt 0) {
+            $lines.Add("`n## Minor changes")
+            $lines.AddRange($engine.return_lines($pth, $releaseNotes.comments.minor, $outputConfig))
+        }
+
+        if ($releaseNotes.comments.patch.length -gt 0) {
+            $lines.Add("`n## Patches")
+            $lines.AddRange($engine.return_lines($pth, $releaseNotes.comments.patch, $outputConfig))
+        }
+
+        if($true -eq $includeDeploymentNotes){
+            if($null -ne $releaseNotes.preDeploymentNotes -and $releaseNotes.preDeploymentNotes.length -gt 0){
+                $lines.Add("`n## Predeployment notes")
+                $releaseNotes.preDeploymentNotes | ForEach-Object {$lines.Add($_)}
+            }
+
+            if($null -ne $releaseNotes.postDeploymentNotes -and $releaseNotes.postDeploymentNotes.length -gt 0){
+                $lines.Add("`n## Postdeployment notes")
+                $releaseNotes.postDeploymentNotes | ForEach-Object {$lines.Add($_)}
+            }
+        }
+
+        $lines.Add("")
+
+        $dict.Add($version, $lines)
     }
-
-    $lines.Add("")
-
-    $dict.Add($version, $lines)
 }
 
 Write-Host "Dict count: $($dict.Count)"
