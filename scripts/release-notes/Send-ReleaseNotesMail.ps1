@@ -29,12 +29,18 @@ Connect-MgGraph -AccessToken $secureToken
 Write-Host "=== Testing Get-MgSiteListItem ==="
 Write-Host "Customer: $customerName | IP: $ipName"
 
+if ($customerName -eq "all") {
+    $filter = "fields/dlwrIpName eq '$ipName'"
+} else {
+    $filter = "fields/dlwrCustomerName eq '$customerName' and fields/dlwrIpName eq '$ipName'"
+}
+
 $listItems = Get-MgSiteListItem `
   -SiteId "dlw365qa.sharepoint.com,7bb8c461-8535-4564-9ee5-9d50314a9cbc,f6eefd7b-906e-4949-b5ea-ce5494d2bdd0" `
   -ListId "ca17277a-f981-4d8a-8c7c-30a59c9fe231" `
-  -Filter "fields/dlwrCustomerName eq '$customerName' and fields/dlwrIpName eq '$ipName'" `
+  -Filter $filter `
   -ExpandProperty "fields" `
-  -Headers @{ Prefer = "HonorNonIndexedQueriesWarningMayFailRandomly" } # TODO, if customer name is empty, do not filter on customer
+  -Headers @{ Prefer = "HonorNonIndexedQueriesWarningMayFailRandomly" }
 
 Write-Host "Items returned: $($listItems.Count)"
 
