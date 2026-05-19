@@ -2,11 +2,12 @@ param(
     [Parameter(Mandatory=$true)]  [string]$accessToken,
     [Parameter(Mandatory=$true)]  [string]$sourcesDirectory,
     [Parameter(Mandatory=$true)]  [string]$releaseNotesPath,
-    [Parameter(Mandatory=$true)]  [string]$configPath,
     [Parameter(Mandatory=$true)]  [string]$latestRelease,
     [Parameter(Mandatory=$true)]  [string]$pdfConversionDriveId,
     [Parameter(Mandatory=$true)]  [string]$fromAddress,
-    [Parameter(Mandatory=$false)] [string]$pdfConversionFolderPath = ""
+    [Parameter(Mandatory=$true)]  [string]$ipName,
+    [Parameter(Mandatory=$false)] [string]$pdfConversionFolderPath = "",
+    [Parameter(Mandatory=$false)] [string]$customerName = ""
 )
 
 $ErrorActionPreference = 'Stop'
@@ -25,9 +26,6 @@ $secureToken = ConvertTo-SecureString -String $accessToken -AsPlainText -Force
 Connect-MgGraph -AccessToken $secureToken
 
 # === Get SP list item ===
-$customerName = "TEST DLW 2"
-$ipName = "Connect"
-
 Write-Host "=== Testing Get-MgSiteListItem ==="
 Write-Host "Customer: $customerName | IP: $ipName"
 
@@ -36,7 +34,7 @@ $listItems = Get-MgSiteListItem `
   -ListId "ca17277a-f981-4d8a-8c7c-30a59c9fe231" `
   -Filter "fields/dlwrCustomerName eq '$customerName' and fields/dlwrIpName eq '$ipName'" `
   -ExpandProperty "fields" `
-  -Headers @{ Prefer = "HonorNonIndexedQueriesWarningMayFailRandomly" }
+  -Headers @{ Prefer = "HonorNonIndexedQueriesWarningMayFailRandomly" } # TODO, if customer name is empty, do not filter on customer
 
 Write-Host "Items returned: $($listItems.Count)"
 
