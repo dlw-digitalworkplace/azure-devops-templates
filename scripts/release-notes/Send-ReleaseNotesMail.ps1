@@ -23,6 +23,31 @@ function Set-Placeholders {
 $secureToken = ConvertTo-SecureString -String $accessToken -AsPlainText -Force
 Connect-MgGraph -AccessToken $secureToken
 
+# === Get SP list item ===
+$customerName = "TEST DLW 2"
+$ipName = "Connect"
+
+Write-Host "=== Testing Get-MgSiteListItem ==="
+Write-Host "Customer: $customerName | IP: $ipName"
+
+$listItems = Get-MgSiteListItem `
+  -SiteId "dlw365qa.sharepoint.com,7bb8c461-8535-4564-9ee5-9d50314a9cbc,f6eefd7b-906e-4949-b5ea-ce5494d2bdd0" `
+  -ListId "ca17277a-f981-4d8a-8c7c-30a59c9fe231" `
+  -Filter "fields/dlwrCustomerName eq '$customerName' and fields/dlwrIpName eq '$ipName'" `
+  -ExpandProperty "fields" `
+  -Headers @{ Prefer = "HonorNonIndexedQueriesWarningMayFailRandomly" }
+
+Write-Host "Items returned: $($listItems.Count)"
+
+foreach ($item in $listItems) {
+    $fields = $item.Fields.AdditionalProperties
+    Write-Host "dlwrCustomerName:   $($fields.dlwrCustomerName)"
+    Write-Host "dlwrIpName:         $($fields.dlwrIpName)"
+    Write-Host "dlwrCurrentVersion: $($fields.dlwrCurrentVersion)"
+    Write-Host "dlwrToRecipients:   $($fields.dlwrToRecipients)"
+}
+
+
 # === Load config and release notes ===
 $configLocation = "$sourcesDirectory/$configPath"
 $configMail = Get-Content -Path $configLocation -Raw | ConvertFrom-Json
