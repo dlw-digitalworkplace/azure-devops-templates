@@ -55,8 +55,16 @@ foreach ($item in $listItems) {
 foreach ($customer in $listItems) {
     $fields = $customer.Fields.AdditionalProperties
 
-    $attachmentName = $fields.dlwrAttachmentName
     $IpName = $fields.dlwrIpName
+
+    $placeholders = @{
+        "ipname"  = $IpName
+        "version" = $latestRelease
+    }
+
+    $mailSubject    = Set-Placeholders -textToReplace $fields.dlwrMailSubject    -placeholders $placeholders
+    $mailBody       = Set-Placeholders -textToReplace $fields.dlwrMailBody       -placeholders $placeholders
+    $attachmentName = Set-Placeholders -textToReplace $fields.dlwrAttachmentName -placeholders $placeholders
 
     # === Convert markdown to PDF via Microsoft Graph SDK ===
     $uniqueMdName = "$IpName-release-notes-$latestRelease.md"
@@ -111,10 +119,10 @@ foreach ($customer in $listItems) {
 
     $params = @{
         message = @{
-            subject = $fields.dlwrMailSubject
+            subject = $mailSubject
             body = @{
                 contentType = "HTML"
-                content     = $fields.dlwrMailBody
+                content     = $mailBody
             }
             toRecipients = @(
                 $fields.dlwrToRecipients -split ';' | ForEach-Object { $_.Trim() } | Where-Object { $_ } | ForEach-Object {
@@ -129,7 +137,7 @@ foreach ($customer in $listItems) {
             attachments = @(
                 @{
                     "@odata.type" = "#microsoft.graph.fileAttachment"
-                    name          = $fields.dlwrAttachmentName
+                    name          = $attachmentName
                     contentType   = "application/pdf"
                     contentBytes  = $pdfContent
                 }
