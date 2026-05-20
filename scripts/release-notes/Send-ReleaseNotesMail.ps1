@@ -7,7 +7,10 @@ param(
     [Parameter(Mandatory=$true)]  [string]$fromAddress,
     [Parameter(Mandatory=$true)]  [string]$ipName,
     [Parameter(Mandatory=$false)] [string]$pdfConversionFolderPath = "",
-    [Parameter(Mandatory=$false)] [string]$customerName = ""
+    [Parameter(Mandatory=$false)] [string]$customerName        = "",
+    [Parameter(Mandatory=$false)] [string]$testRecipients      = "",
+    [Parameter(Mandatory=$false)] [bool]  $onlyLatestVersion   = $true,
+    [Parameter(Mandatory=$false)] [string]$changeLogFolder     = ""
 )
 
 $ErrorActionPreference = 'Stop'
@@ -24,6 +27,79 @@ function Set-Placeholders {
 # === Connect to Microsoft Graph ===
 $secureToken = ConvertTo-SecureString -String $accessToken -AsPlainText -Force
 Connect-MgGraph -AccessToken $secureToken
+
+# === Test-mode early exit ===
+if (-not [string]::IsNullOrEmpty($testRecipients)) {
+    $testAttachmentName = "$ipName-v$latestRelease-release-notes.pdf"
+    $testPdfLocalPath   = "$sourcesDirectory/$testAttachmentName"
+    $testUniqueMdName   = "$ipName-release-notes-$latestRelease.md"
+    $testReleaseNotesLocation = "$sourcesDirectory/$releaseNotesPath"
+
+    $testFolderPrefix = ""
+    if (-not [string]::IsNullOrWhiteSpace($pdfConversionFolderPath)) {
+        $testFolderPrefix = $pdfConversionFolderPath.Trim('/') + '/'
+    }
+
+    $testUploadItemPath = "root:/${testFolderPrefix}${testUniqueMdName}:"
+    $testUploadedItemId = $null
+
+    try {
+        Write-Host "TEST MODE: Uploading markdown to drive item: $testUploadItemPath"
+        $testUploadResponse = Set-MgDriveItemContent `
+            -DriveId $pdfConversionDriveId `
+            -DriveItemId $testUploadItemPath `
+            -InFile $testReleaseNotesLocation
+        $testUploadedItemId = $testUploadResponse.Id
+        Write-Host "TEST MODE: Uploaded as driveItem: $testUploadedItemId"
+
+        Write-Host "TEST MODE: Converting to PDF..."
+        Get-MgDriveItemContent `
+            -DriveId $pdfConversionDriveId `
+            -DriveItemId $testUploadedItemId `
+            -Format pdf `
+            -OutFile $testPdfLocalPath
+        Write-Host "TEST MODE: PDF saved to: $testPdfLocalPath"
+    }
+    finally {
+        if ($testUploadedItemId) {
+            Write-Host "TEST MODE: Cleaning up scratch driveItem $testUploadedItemId"
+            try {
+                Remove-MgDriveItem -DriveId $pdfConversionDriveId -DriveItemId $testUploadedItemId
+            } catch {
+                Write-Warning "TEST MODE: Failed to delete scratch driveItem: $($_.Exception.Message)"
+            }
+        }
+    }
+
+    $testPdfContent = [Convert]::ToBase64String([IO.File]::ReadAllBytes($testPdfLocalPath))
+
+    $testParams = @{
+        message = @{
+            subject = "TEST - $ipName v$latestRelease release notes preview"
+            body = @{
+                contentType = "HTML"
+                content     = "<p>Please review the attached release notes.</p>"
+            }
+            toRecipients = @(
+                $testRecipients -split ',' | ForEach-Object { $_.Trim() } | Where-Object { $_ } | ForEach-Object {
+                    @{ emailAddress = @{ address = $_ } }
+                }
+            )
+            attachments = @(
+                @{
+                    "@odata.type" = "#microsoft.graph.fileAttachment"
+                    name          = $testAttachmentName
+                    contentType   = "application/pdf"
+                    contentBytes  = $testPdfContent
+                }
+            )
+        }
+    }
+
+    Write-Host "TEST MODE: Sending preview email to: $testRecipients"
+    Send-MgUserMail -UserId $fromAddress -BodyParameter $testParams
+    return
+}
 
 # === Get SP list item ===
 Write-Host "=== Testing Get-MgSiteListItem ==="
@@ -65,6 +141,22 @@ foreach ($customer in $listItems) {
     $mailSubject    = Set-Placeholders -textToReplace $fields.dlwrMailSubject    -placeholders $placeholders
     $mailBody       = Set-Placeholders -textToReplace $fields.dlwrMailBody       -placeholders $placeholders
     $attachmentName = Set-Placeholders -textToReplace $fields.dlwrAttachmentName -placeholders $placeholders
+
+    if (-not $onlyLatestVersion) {
+        $customerFromVersion = $fields.dlwrCurrentVersion
+        if ([string]::IsNullOrEmpty($customerFromVersion)) { $customerFromVersion = $latestRelease }
+
+        & "$PSScriptRoot/Get-ReleaseNotes.ps1" `
+            -changeLogFolder           $changeLogFolder `
+            -fromVersion               $customerFromVersion `
+            -includeDescription        $true `
+            -includeChangeNonTechnical $true `
+            -includeChangeTechnical    $false `
+            -includeDeploymentNotes    $false `
+            -releaseNotesOutputPath    $releaseNotesPath `
+            -sourcesDirectory          $sourcesDirectory `
+            -tillVersion               "N/A"
+    }
 
     # === Convert markdown to PDF via Microsoft Graph SDK ===
     $uniqueMdName = "$IpName-release-notes-$latestRelease.md"
