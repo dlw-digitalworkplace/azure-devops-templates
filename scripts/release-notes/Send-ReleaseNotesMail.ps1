@@ -1,5 +1,6 @@
 param(
     [Parameter(Mandatory=$true)]  [string]$accessToken,
+    [Parameter(Mandatory=$true)]  [string]$sendGridApiKey,
     [Parameter(Mandatory=$true)]  [string]$sourcesDirectory,
     [Parameter(Mandatory=$true)]  [string]$releaseNotesPath,
     [Parameter(Mandatory=$true)]  [string]$latestRelease,
@@ -73,31 +74,30 @@ if (-not [string]::IsNullOrEmpty($testRecipients)) {
 
     $testPdfContent = [Convert]::ToBase64String([IO.File]::ReadAllBytes($testPdfLocalPath))
 
-    $testParams = @{
-        message = @{
+    $testToList = $testRecipients -split ',' | ForEach-Object { $_.Trim() } | Where-Object { $_ } | ForEach-Object { @{ email = $_ } }
+
+    $testSendGridPayload = @{
+        personalizations = @(@{
+            to      = $testToList
             subject = "TEST - $ipName v$latestRelease release notes preview"
-            body = @{
-                contentType = "HTML"
-                content     = "<p>Please review the attached release notes.</p>"
-            }
-            toRecipients = @(
-                $testRecipients -split ',' | ForEach-Object { $_.Trim() } | Where-Object { $_ } | ForEach-Object {
-                    @{ emailAddress = @{ address = $_ } }
-                }
-            )
-            attachments = @(
-                @{
-                    "@odata.type" = "#microsoft.graph.fileAttachment"
-                    name          = $testAttachmentName
-                    contentType   = "application/pdf"
-                    contentBytes  = $testPdfContent
-                }
-            )
-        }
-    }
+        })
+        from        = @{ email = $fromAddress }
+        content     = @(@{ type = 'text/html'; value = '<p>Please review the attached release notes.</p>' })
+        attachments = @(@{
+            content     = $testPdfContent
+            type        = 'application/pdf'
+            filename    = $testAttachmentName
+            disposition = 'attachment'
+        })
+    } | ConvertTo-Json -Depth 6
 
     Write-Host "TEST MODE: Sending preview email to: $testRecipients"
-    Send-MgUserMail -UserId $fromAddress -BodyParameter $testParams
+    Invoke-RestMethod `
+        -Method      Post `
+        -Uri         'https://api.sendgrid.com/v3/mail/send' `
+        -Headers     @{ Authorization = "Bearer $sendGridApiKey" } `
+        -ContentType 'application/json' `
+        -Body        $testSendGridPayload
     return
 }
 
@@ -209,34 +209,29 @@ foreach ($customer in $listItems) {
 
     Write-Host "Processing customer: $($fields.dlwrCustomerName)"
 
-    $params = @{
-        message = @{
-            subject = $mailSubject
-            body = @{
-                contentType = "HTML"
-                content     = $mailBody
-            }
-            toRecipients = @(
-                $fields.dlwrToRecipients -split ';' | ForEach-Object { $_.Trim() } | Where-Object { $_ } | ForEach-Object {
-                    @{ emailAddress = @{ address = $_ } }
-                }
-            )
-            CcRecipients = @(
-                $fields.dlwrCcRecipients -split ';' | ForEach-Object { $_.Trim() } | Where-Object { $_ } | ForEach-Object {
-                    @{ emailAddress = @{ address = $_ } }
-                }
-            )
-            attachments = @(
-                @{
-                    "@odata.type" = "#microsoft.graph.fileAttachment"
-                    name          = $attachmentName
-                    contentType   = "application/pdf"
-                    contentBytes  = $pdfContent
-                }
-            )
-        }
-    }
+    $toList = $fields.dlwrToRecipients -split ';' | ForEach-Object { $_.Trim() } | Where-Object { $_ } | ForEach-Object { @{ email = $_ } }
+    $ccList = $fields.dlwrCcRecipients -split ';' | ForEach-Object { $_.Trim() } | Where-Object { $_ } | ForEach-Object { @{ email = $_ } }
+
+    $personalization = @{ to = $toList; subject = $mailSubject }
+    if ($ccList.Count -gt 0) { $personalization.cc = $ccList }
+
+    $sendGridPayload = @{
+        personalizations = @($personalization)
+        from        = @{ email = $fromAddress }
+        content     = @(@{ type = 'text/html'; value = $mailBody })
+        attachments = @(@{
+            content     = $pdfContent
+            type        = 'application/pdf'
+            filename    = $attachmentName
+            disposition = 'attachment'
+        })
+    } | ConvertTo-Json -Depth 6
 
     Write-Host "Sending email to: $($fields.dlwrToRecipients)"
-    Send-MgUserMail -UserId $fromAddress -BodyParameter $params
+    Invoke-RestMethod `
+        -Method      Post `
+        -Uri         'https://api.sendgrid.com/v3/mail/send' `
+        -Headers     @{ Authorization = "Bearer $sendGridApiKey" } `
+        -ContentType 'application/json' `
+        -Body        $sendGridPayload
 }
