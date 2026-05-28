@@ -74,7 +74,7 @@ if (-not [string]::IsNullOrEmpty($testRecipients)) {
 
     $testPdfContent = [Convert]::ToBase64String([IO.File]::ReadAllBytes($testPdfLocalPath))
 
-    $testToList = $testRecipients -split ',' | ForEach-Object { $_.Trim() } | Where-Object { $_ } | ForEach-Object { @{ email = $_ } }
+    $testToList = @($testRecipients -split ',' | ForEach-Object { $_.Trim() } | Where-Object { $_ } | ForEach-Object { @{ email = $_ } })
 
     $testSendGridPayload = @{
         personalizations = @(@{
@@ -209,8 +209,8 @@ foreach ($customer in $listItems) {
 
     Write-Host "Processing customer: $($fields.dlwrCustomerName)"
 
-    $toList = $fields.dlwrToRecipients -split ';' | ForEach-Object { $_.Trim() } | Where-Object { $_ } | ForEach-Object { @{ email = $_ } }
-    $ccList = $fields.dlwrCcRecipients -split ';' | ForEach-Object { $_.Trim() } | Where-Object { $_ } | ForEach-Object { @{ email = $_ } }
+    $toList = @($fields.dlwrToRecipients -split ';' | ForEach-Object { $_.Trim() } | Where-Object { $_ } | ForEach-Object { @{ email = $_ } })
+    $ccList = @($fields.dlwrCcRecipients -split ';' | ForEach-Object { $_.Trim() } | Where-Object { $_ } | ForEach-Object { @{ email = $_ } })
 
     $personalization = @{ to = $toList; subject = $mailSubject }
     if ($ccList.Count -gt 0) { $personalization.cc = $ccList }
