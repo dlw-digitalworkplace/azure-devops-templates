@@ -81,7 +81,7 @@ if (-not [string]::IsNullOrEmpty($testRecipients)) {
             to      = $testToList
             subject = "TEST - $ipName v$latestRelease release notes preview"
         })
-        from        = @{ email = $fromAddress }
+        from        = @{ email = $fromAddress; name = 'Digital Workplace noreply' }
         content     = @(@{ type = 'text/html'; value = '<p>Please review the attached release notes.</p>' })
         attachments = @(@{
             content     = $testPdfContent
@@ -218,7 +218,7 @@ foreach ($customer in $listItems) {
 
     $sendGridPayload = @{
         personalizations = @($personalization)
-        from        = @{ email = $fromAddress }
+        from        = @{ email = $fromAddress; name = 'Digital Workplace noreply' }
         content     = @(@{ type = 'text/html'; value = $mailBody })
         attachments = @(@{
             content     = $pdfContent
