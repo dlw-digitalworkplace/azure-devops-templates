@@ -209,8 +209,9 @@ foreach ($customer in $listItems) {
 
     Write-Host "Processing customer: $($fields.dlwrCustomerName)"
 
-    $toList = @($fields.dlwrToRecipients -split ';' | ForEach-Object { $_.Trim() } | Where-Object { $_ } | ForEach-Object { @{ email = $_ } })
-    $ccList = @($fields.dlwrCcRecipients -split ';' | ForEach-Object { $_.Trim() } | Where-Object { $_ } | ForEach-Object { @{ email = $_ } })
+    $toAddresses = @($fields.dlwrToRecipients -split ';' | ForEach-Object { $_.Trim() } | Where-Object { $_ })
+    $toList      = @($toAddresses | ForEach-Object { @{ email = $_ } })
+    $ccList      = @($fields.dlwrCcRecipients -split ';' | ForEach-Object { $_.Trim() } | Where-Object { $_ -and $_ -notin $toAddresses } | ForEach-Object { @{ email = $_ } })
 
     $personalization = @{ to = $toList; subject = $mailSubject }
     if ($ccList.Count -gt 0) { $personalization.cc = $ccList }
