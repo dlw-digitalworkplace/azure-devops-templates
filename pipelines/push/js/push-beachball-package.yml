@@ -44,7 +44,7 @@ steps:
       echo "always-auth=true" >> $HOME/.npmrc
     displayName: 'Prepare .npmrc file'
 
-  - task: npmAuthenticate@0
+  - task: npmAuthenticate@0.262.0
     displayName: 'Authenticate to NPM'
     inputs:
       workingFile: $(HomeDirectory)/.npmrc
